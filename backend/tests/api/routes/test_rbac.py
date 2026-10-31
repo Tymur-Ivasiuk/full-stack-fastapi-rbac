@@ -143,3 +143,9 @@ def test_denied_access_is_logged(
 
     assert "Access denied" in caplog.text
     assert "permission=metrics:read" in caplog.text
+
+
+def test_invalid_token_is_unauthorized_not_forbidden(client: TestClient) -> None:
+    # The frontend logs the user out on 401 but keeps the session on 403.
+    r = client.get(f"{API}/users/me", headers={"Authorization": "Bearer invalid"})
+    assert r.status_code == 401
