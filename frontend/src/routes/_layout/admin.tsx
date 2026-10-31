@@ -1,13 +1,15 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { createFileRoute, redirect } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 import { Suspense } from "react"
 
 import { type UserPublic, UsersService } from "@/client"
 import AddUser from "@/components/Admin/AddUser"
 import { columns, type UserTableData } from "@/components/Admin/columns"
 import { DataTable } from "@/components/Common/DataTable"
+import RequirePermission from "@/components/Common/RequirePermission"
 import PendingUsers from "@/components/Pending/PendingUsers"
 import useAuth from "@/hooks/useAuth"
+import usePermissions from "@/hooks/usePermissions"
 
 function getUsersQueryOptions() {
   return {
@@ -18,15 +20,7 @@ function getUsersQueryOptions() {
 }
 
 export const Route = createFileRoute("/_layout/admin")({
-  component: Admin,
-  beforeLoad: async () => {
-    const { data: user } = await UsersService.readUserMe()
-    if (!user.is_superuser) {
-      throw redirect({
-        to: "/",
-      })
-    }
-  },
+  component: AdminPage,
   head: () => ({
     meta: [
       {
@@ -38,6 +32,7 @@ export const Route = createFileRoute("/_layout/admin")({
 
 function UsersTableContent() {
   const { user: currentUser } = useAuth()
+  const { can } = usePermissions()
   const { data: users } = useSuspenseQuery(getUsersQueryOptions())
 
   const tableData: UserTableData[] = users.data.map((user: UserPublic) => ({
@@ -45,7 +40,11 @@ function UsersTableContent() {
     isCurrentUser: currentUser?.id === user.id,
   }))
 
-  return <DataTable columns={columns} data={tableData} />
+  const visibleColumns = can("users:manage")
+    ? columns
+    : columns.filter((column) => column.id !== "actions")
+
+  return <DataTable columns={visibleColumns} data={tableData} />
 }
 
 function UsersTable() {
@@ -56,7 +55,17 @@ function UsersTable() {
   )
 }
 
+function AdminPage() {
+  return (
+    <RequirePermission permission="users:read">
+      <Admin />
+    </RequirePermission>
+  )
+}
+
 function Admin() {
+  const { can } = usePermissions()
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -66,7 +75,7 @@ function Admin() {
             Manage user accounts and permissions
           </p>
         </div>
-        <AddUser />
+        {can("users:create") && <AddUser />}
       </div>
       <UsersTable />
     </div>
