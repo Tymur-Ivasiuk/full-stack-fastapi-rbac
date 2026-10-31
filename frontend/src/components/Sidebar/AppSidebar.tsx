@@ -1,4 +1,4 @@
-import { Briefcase, Home, Users } from "lucide-react"
+import { BarChart3, Briefcase, Home, Users } from "lucide-react"
 
 import { SidebarAppearance } from "@/components/Common/Appearance"
 import { Logo } from "@/components/Common/Logo"
@@ -9,20 +9,29 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar"
 import useAuth from "@/hooks/useAuth"
+import usePermissions from "@/hooks/usePermissions"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
 
-const baseItems: Item[] = [
+const navItems: Item[] = [
   { icon: Home, title: "Dashboard", path: "/" },
   { icon: Briefcase, title: "Items", path: "/items" },
+  { icon: Users, title: "Users", path: "/admin", permission: "users:read" },
+  {
+    icon: BarChart3,
+    title: "Metrics",
+    path: "/metrics",
+    permission: "metrics:read",
+  },
 ]
 
 export function AppSidebar() {
   const { user: currentUser } = useAuth()
+  const { can } = usePermissions()
 
-  const items = currentUser?.is_superuser
-    ? [...baseItems, { icon: Users, title: "Admin", path: "/admin" }]
-    : baseItems
+  const items = navItems.filter(
+    (item) => !item.permission || can(item.permission),
+  )
 
   return (
     <Sidebar collapsible="icon">
